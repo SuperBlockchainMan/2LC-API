@@ -5,8 +5,24 @@ const { JSDOM } = jsdom;
 const NodeCache = require( "node-cache" );
 const Web3 = require('web3');
 const fs = require('fs');
+const mysql = require("mysql");
 
 require('dotenv').config();
+
+var connection = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "price"
+});
+
+connection.connect(function(err) {
+  if (err) {
+    console.error('error: ' + err.message);
+  } else {
+    console.log('Connected to the MySQL server.');
+  }  
+});
 
 class BuildAPI {
     constructor() {
@@ -29,7 +45,83 @@ class BuildAPI {
         this.defineEndPoints();
     }
 
+    getTokenInfoUrl(token) {
+        let url = new URL('https://api.bscscan.com/api');
+
+        let params = {
+            module: 'stats',
+            action: 'tokensupply',
+            contractAddress: token,
+            apikey: 'G49KISQJYVS8I39WGI4RYS29AM68HH3ZBF'
+        };
+
+        url.search = new URLSearchParams(params).toString();
+
+        return url;
+    }
+
+    async getPriceData() {
+
+        var price_2lc = 0;
+        var price_btcb = 0;
+        var price_cake = 0;
+        var price_eth = 0;
+        var price_uni = 0;
+
+        await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=2LCUSDT')
+            .then((response) => response.json())
+            .then((responseData) => {                
+                price_2lc = responseData.price;
+                console.log("pooh price_2lc = ", price_2lc);
+            })
+        await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=BTCUSDT')
+            .then((response) => response.json())
+            .then((responseData) => {
+                price_btcb = responseData.price;
+                console.log("pooh price_btcb = ", price_btcb);
+            })
+        await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=CAKEUSDT')
+            .then((response) => response.json())
+            .then((responseData) => {
+                price_cake = responseData.price;
+                console.log("pooh price_cake = ", price_cake);
+            })
+        await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=ETHUSDT')
+            .then((response) => response.json())
+            .then((responseData) => {
+                price_eth = responseData.price;
+                console.log("pooh price_eth = ", price_eth);
+            })
+        await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=UNIUSDT')
+            .then((response) => response.json())
+            .then((responseData) => {
+                price_uni = responseData.price;
+                console.log("pooh price_uni = ", price_uni);
+            })
+
+        var sql = `insert prices SET ?`
+        var newPrice = {
+            date: new Date(),
+            price_2lc: price_2lc,
+            price_btcb: price_btcb,
+            price_cake: price_cake,
+            price_eth: price_eth,
+            price_uni: price_uni
+        }
+        connection.query(sql, newPrice, (err, res) => {
+            if (err) {
+              console.log("error: ", err);
+              return;
+            }
+            console.log("inserted new price data");
+        });
+    }
+
     defineEndPoints() {
+        this.app.get("/", (req, res) => {
+            res.json({ message: "Welcome to application." });
+        });
+
         this.app.get("/tokenSupply/:token", async (req, res, next) => {
             let token = req.params.token, details, liquidity_data, token_score;
 
@@ -55,21 +147,24 @@ class BuildAPI {
 
             return res.send(totalSupply);
         });
-    }
 
-    getTokenInfoUrl(token) {
-        let url = new URL('https://api.bscscan.com/api');
+        this.app.get("/getPriceData", async (req, res, next) => {
+            var sql = "SELECT * FROM ( SELECT * FROM `prices` ORDER BY date DESC LIMIT 2520 ) sub ORDER BY id ASC";    
+            connection.query(sql, (error, result) => {
+                if (error) {
+                    res.send({ status: false, message: 'Getting Error' + error })
+                } else {
+                    if (result.length > 0) {
+                        res.send(result);
+                    } else {
+                        res.send({ status: false, message: "Invalid Link" });
+                    }
 
-        let params = {
-            module: 'stats',
-            action: 'tokensupply',
-            contractAddress: token,
-            apikey: 'G49KISQJYVS8I39WGI4RYS29AM68HH3ZBF'
-        };
-
-        url.search = new URLSearchParams(params).toString();
-
-        return url;
+                }
+            })
+        });
+        
+        setInterval(this.getPriceData, 2400000);
     }
 }
 
