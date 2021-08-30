@@ -60,6 +60,23 @@ class BuildAPI {
         return url;
     }
 
+    getTokenBalanceUrl(token, address) {
+        let url = new URL('https://api.bscscan.com/api');
+
+        let params = {
+            module: 'account',
+            action: 'tokenbalance',
+            contractAddress: token,
+            address: address,
+            tag: 'latest',
+            apikey: 'G49KISQJYVS8I39WGI4RYS29AM68HH3ZBF'
+        };
+
+        url.search = new URLSearchParams(params).toString();
+
+        return url;
+    }
+
     async getPriceData() {
 
         var price_2lc = 0;
@@ -122,6 +139,22 @@ class BuildAPI {
             res.json({ message: "Welcome to application." });
         });
 
+        this.app.get("/getPriceData", async (req, res, next) => {
+            var sql = "SELECT * FROM ( SELECT * FROM `prices` ORDER BY date DESC LIMIT 2520 ) sub ORDER BY id ASC";    
+            connection.query(sql, (error, result) => {
+                if (error) {
+                    res.send({ status: false, message: 'Getting Error' + error })
+                } else {
+                    if (result.length > 0) {
+                        res.send(result);
+                    } else {
+                        res.send({ status: false, message: "Invalid Link" });
+                    }
+
+                }
+            })
+        });
+
         this.app.get("/tokenSupply/:token", async (req, res, next) => {
             let token = req.params.token, details, liquidity_data, token_score;
 
@@ -139,29 +172,42 @@ class BuildAPI {
 
             totalSupply = totalSupply.substring(0, length - decimal) + "." + totalSupply.substring(length - decimal);
 
-            const result = {
-                status: token_info.status,
-                messages: token_info.message,
-                result: totalSupply
-            }
-
             return res.send(totalSupply);
         });
 
-        this.app.get("/getPriceData", async (req, res, next) => {
-            var sql = "SELECT * FROM ( SELECT * FROM `prices` ORDER BY date DESC LIMIT 2520 ) sub ORDER BY id ASC";    
-            connection.query(sql, (error, result) => {
-                if (error) {
-                    res.send({ status: false, message: 'Getting Error' + error })
-                } else {
-                    if (result.length > 0) {
-                        res.send(result);
-                    } else {
-                        res.send({ status: false, message: "Invalid Link" });
-                    }
+        this.app.get("/tokenCirc/:token", async (req, res, next) => {
+            
+            let token = req.params.token, details, liquidity_data, token_score;
 
-                }
-            })
+            if (!token.startsWith("0x") || token.length !== 42) {
+                return res.json({
+                    error: "Invalid token"
+                });
+            }
+
+            const lockContractSold = '0xD1aBeE9312C128d30781C6C3A712eD956F3ec418';
+            const lockContractUnsold = '0x39E2b6478c164970C9DBc94E883F47e9801dF531';
+            const localwallet = '0x468c67832c3b2669BEc60A2C48Fb9D07Db125364';
+            const pancakeswap = '0xf4269AcE31E90A15086b16d969f293bEda91BfC4';
+            const yieldFarm = '0xA77924b786314fA4F7E603C10c372dA1E779b8d1';
+
+            const token_info = await fetch(this.getTokenInfoUrl(token)).then((response) => response.json());
+            const lockContractSold_info = await fetch(this.getTokenBalanceUrl(token, lockContractSold)).then((response) => response.json());
+            const lockContractUnsold_info = await fetch(this.getTokenBalanceUrl(token, lockContractUnsold)).then((response) => response.json());
+            const localwallet_info = await fetch(this.getTokenBalanceUrl(token, localwallet)).then((response) => response.json());
+            const pancakeswap_info = await fetch(this.getTokenBalanceUrl(token, pancakeswap)).then((response) => response.json());
+            const yieldFarm_info = await fetch(this.getTokenBalanceUrl(token, yieldFarm)).then((response) => response.json());
+
+            const tokenBalance = token_info.result / 1000000000000000000
+            const lockContractSoldBalance = lockContractSold_info.result / 1000000000000000000
+            const lockContractUnsoldBalance = lockContractUnsold_info.result / 1000000000000000000
+            const localwalletBalance = localwallet_info.result / 1000000000000000000
+            const pancakeswapBalance = pancakeswap_info.result / 1000000000000000000
+            const yieldFarmBalance = yieldFarm_info.result / 1000000000000000000
+
+            const circulationBalance = tokenBalance - lockContractSoldBalance - lockContractUnsoldBalance - localwalletBalance - pancakeswapBalance - yieldFarmBalance
+
+            return res.send(circulationBalance.toString());
         });
         
         setInterval(this.getPriceData, 2400000);
