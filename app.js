@@ -210,7 +210,7 @@ class BuildAPI {
             return res.send(circulationBalance.toString());
         });
         
-        setInterval(this.getPriceData, 2400000);
+        setInterval(this.getPriceData, 240000);
     }
 }
 
