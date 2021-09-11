@@ -149,7 +149,7 @@ class BuildAPI {
                     res.send({ status: false, message: 'Getting Error' + error })
                 } else {
                     if (result.length > 0) {
-                        result.price_bnb = price_bnb;
+                        result[0].price_bnb = price_bnb;
                         res.send(result);
                     } else {
                         res.send({ status: false, message: "Invalid Link" });
