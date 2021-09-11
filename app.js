@@ -12,7 +12,7 @@ require('dotenv').config();
 var connection = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "",
+  password: "root",
   database: "price"
 });
 
@@ -89,31 +89,26 @@ class BuildAPI {
             .then((response) => response.json())
             .then((responseData) => {                
                 price_2lc = responseData.price;
-                console.log("pooh price_2lc = ", price_2lc);
             })
         await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=BTCUSDT')
             .then((response) => response.json())
             .then((responseData) => {
                 price_btcb = responseData.price;
-                console.log("pooh price_btcb = ", price_btcb);
             })
         await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=CAKEUSDT')
             .then((response) => response.json())
             .then((responseData) => {
                 price_cake = responseData.price;
-                console.log("pooh price_cake = ", price_cake);
             })
         await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=ETHUSDT')
             .then((response) => response.json())
             .then((responseData) => {
                 price_eth = responseData.price;
-                console.log("pooh price_eth = ", price_eth);
             })
         await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=UNIUSDT')
             .then((response) => response.json())
             .then((responseData) => {
                 price_uni = responseData.price;
-                console.log("pooh price_uni = ", price_uni);
             })
 
         var sql = `insert prices SET ?`
@@ -137,6 +132,31 @@ class BuildAPI {
     defineEndPoints() {
         this.app.get("/", (req, res) => {
             res.json({ message: "Welcome to application." });
+        });
+
+        this.app.get("/getLastPriceData", async (req, res, next) => {
+            var price_bnb = 0;
+            await fetch('https://www.bitrue.com/api/v1/ticker/price?symbol=BNBUSDT')
+                .then((response) => response.json())
+                .then((responseData) => {
+                    price_bnb = responseData.price;
+                    console.log("pooh price_bnb = ", price_bnb);
+                })
+
+            var sql = "SELECT * FROM `prices` ORDER BY date DESC LIMIT 1";
+            connection.query(sql, (error, result) => {
+                if (error) {
+                    res.send({ status: false, message: 'Getting Error' + error })
+                } else {
+                    if (result.length > 0) {
+                        result.price_bnb = price_bnb;
+                        res.send(result);
+                    } else {
+                        res.send({ status: false, message: "Invalid Link" });
+                    }
+
+                }
+            })
         });
 
         this.app.get("/getPriceData", async (req, res, next) => {
