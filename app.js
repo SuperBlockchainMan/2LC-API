@@ -210,6 +210,7 @@ class BuildAPI {
             const localwallet = '0x468c67832c3b2669BEc60A2C48Fb9D07Db125364';
             const pancakeswap = '0xf4269AcE31E90A15086b16d969f293bEda91BfC4';
             const yieldFarm = '0xA77924b786314fA4F7E603C10c372dA1E779b8d1';
+            const lockPool = '0x282F924d14776209309E279353eE11Ac5ca3f633';
 
             const token_info = await fetch(this.getTokenInfoUrl(token)).then((response) => response.json());
             const lockContractSold_info = await fetch(this.getTokenBalanceUrl(token, lockContractSold)).then((response) => response.json());
@@ -217,6 +218,7 @@ class BuildAPI {
             const localwallet_info = await fetch(this.getTokenBalanceUrl(token, localwallet)).then((response) => response.json());
             const pancakeswap_info = await fetch(this.getTokenBalanceUrl(token, pancakeswap)).then((response) => response.json());
             const yieldFarm_info = await fetch(this.getTokenBalanceUrl(token, yieldFarm)).then((response) => response.json());
+            const lockPool_info = await fetch(this.getTokenBalanceUrl(token, lockPool)).then((response) => response.json());
 
             const tokenBalance = token_info.result / 1000000000000000000
             const lockContractSoldBalance = lockContractSold_info.result / 1000000000000000000
@@ -224,8 +226,9 @@ class BuildAPI {
             const localwalletBalance = localwallet_info.result / 1000000000000000000
             const pancakeswapBalance = pancakeswap_info.result / 1000000000000000000
             const yieldFarmBalance = yieldFarm_info.result / 1000000000000000000
+            const lockPoolBalance = lockPool_info.result / 1000000000000000000
 
-            const circulationBalance = tokenBalance - lockContractSoldBalance - lockContractUnsoldBalance - localwalletBalance - pancakeswapBalance - yieldFarmBalance
+            const circulationBalance = tokenBalance - lockContractSoldBalance - lockContractUnsoldBalance - localwalletBalance - pancakeswapBalance - yieldFarmBalance - lockPoolBalance
 
             return res.send(circulationBalance.toString());
         });
